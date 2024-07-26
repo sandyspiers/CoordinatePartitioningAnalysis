@@ -37,30 +37,46 @@ function sum_threshold(cuts::Vector{Matrix{T}} where {T}; use_lb=true)
     return max_thresholds
 end
 
-function plot_threshold!(cut::Matrix{T} where {T})
-    return plot_threshold!([cut]; use_lb=false, rng=range(0, 1, 300))
-end
+plot_threshold!(cut::Matrix{T} where {T}; kwargs...) = plot_threshold!([cut]; kwargs...)
 function plot_threshold!(
-    cuts::Vector{Matrix{T}} where {T}; use_lb=false, rng=range(0, 1, 300)
+    cuts::Vector{Matrix{T}} where {T}; use_lb=false, rng=range(0, 1, 500)
 )
     st = sum_threshold(cuts; use_lb=use_lb)
     x = y = rng
     z = map(((x, y),) -> st([x, y]), Iterators.product(x, y))
 
     CM = cgrad(:thermal; rev=true)
-    heatmap!(x, y, z; alpha=1, colormap=CM)
+    heatmap!(x, y, z; alpha=1, colormap=CM, colorbar=false)
     for cut in cuts
         contri = invperm(sortperm([sum_distance(cut)(pt) for pt in eachrow(cut)]; rev=true))
-        scatter!(cut[:, 1], cut[:, 2]; zcolor=contri, colormap=CM, markersize=5, alpha=1)
+        scatter!(
+            cut[:, 1],
+            cut[:, 2];
+            zcolor=contri,
+            colormap=CM,
+            markersize=5,
+            alpha=1,
+            colorbar=false,
+        )
     end
 end
 
-cuts = [rand_loc(6) for _ in 1:4]
+p = 9
+n = 45
+m = 10
 
-p_fy = plot(; xlims=(0, 1), ylims=(0, 1))
-plot_threshold!(cuts; use_lb=false)
+locs = rand_loc(n)
+cuts = [rand_loc(p) for _ in 1:m]
 
-p_lb = plot(; xlims=(0, 1), ylims=(0, 1))
+single_fy = Plots.Plot[]
+for cut in cuts
+    plt = plot(; xlims=(0, 1), ylims=(0, 1))
+    plot_threshold!(cut; use_lb=false)
+    push!(single_fy, plt)
+end
+single_fy = plot(single_fy...; layout=(1, m))
+
+all_lb = plot(; xlims=(0, 1), ylims=(0, 1))
 plot_threshold!(cuts; use_lb=true)
 
-plot(p_fy, p_lb; size=(2000, 1000))
+plot(single_fy, all_lb; size=(1000, 2000), layout=grid(2, 1; heights=[0.3, 0.7]))

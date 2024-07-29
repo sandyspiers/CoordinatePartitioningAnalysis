@@ -6,6 +6,11 @@ using ProgressMeter
 using LinearAlgebra: norm
 
 rand_loc(n::Integer) = rand(n, 2)
+function rand_cir(n::Integer)
+    l = randn(n, 2)
+    n = repeat(norm.(eachrow(l)); inner=(1, 2))
+    return (l ./ n) ./ 2 .+ 0.5
+end
 
 function sum_distance(points)
     dist(loc) = sum(norm(loc - pt) for pt in eachrow(points))
@@ -139,7 +144,7 @@ function plot_single_cuts_expanded_and_contribution(p, n, m)
         single_fy,
         single_lb,
         all_lb;
-        size=(1000, 1500),
+        # size=(1000, 1500),
         layout=grid(3, 1; heights=[0.25, 0.25, 0.5]),
     )
 end

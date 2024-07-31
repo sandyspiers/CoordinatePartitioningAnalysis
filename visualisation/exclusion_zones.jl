@@ -1,9 +1,8 @@
+using LinearAlgebra: norm
 using CoordinatePartitioning: build_edm
+
 using Plots
 pythonplot()
-
-using ProgressMeter
-using LinearAlgebra: norm
 
 rand_loc(n::Integer) = rand(n, 2)
 function rand_cir(n::Integer)
@@ -46,7 +45,7 @@ end
 
 plot_threshold!(cut::Matrix{T} where {T}; kwargs...) = plot_threshold!([cut]; kwargs...)
 function plot_threshold!(
-    cuts::Vector{Matrix{T}} where {T}; use_lb=false, lb=0, rng=range(0, 1, 300)
+    cuts::Vector{Matrix{T}} where {T}; use_lb=false, lb=0, rng=range(0, 1, 500)
 )
     st = sum_threshold(cuts; use_lb=use_lb, lb=lb)
     x = y = rng
@@ -81,7 +80,7 @@ function plot_threshold!(
 end
 
 function plot_single_cut(p)
-    cut = rand_loc(p)
+    cut = rand_cir(p)
     p = plot(; size=(1000, 1000))
     plot_threshold!(cut; use_lb=false)
     return p
@@ -144,7 +143,7 @@ function plot_single_cuts_expanded_and_contribution(p, n, m)
         single_fy,
         single_lb,
         all_lb;
-        # size=(1000, 1500),
+        size=(1000, 1500),
         layout=grid(3, 1; heights=[0.25, 0.25, 0.5]),
     )
 end

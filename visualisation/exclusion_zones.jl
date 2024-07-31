@@ -2,22 +2,28 @@ using LinearAlgebra: norm
 using CoordinatePartitioning: build_edm
 
 using Plots
-pythonplot()
+# pythonplot()
 
-rand_loc(n::Integer) = rand(n, 2)
-function rand_cir(n::Integer)
-    l = randn(n, 2)
-    n = repeat(norm.(eachrow(l)); inner=(1, 2))
+rand_loc(n::Integer, coords::Integer=2) = rand(n, coords)
+function rand_cir(n::Integer, coords::Integer=2)
+    l = randn(n, coords)
+    n = repeat(norm.(eachrow(l)); inner=(1, coords))
     return (l ./ n) ./ 2 .+ 0.5
 end
 
-function sum_distance(points)
-    dist(loc) = sum(norm(loc - pt) for pt in eachrow(points))
+function sum_distance(points; squared=false)
+    function dist(loc)
+        if squared
+            return sum(norm(loc - pt)^2 for pt in eachrow(points))
+        else
+            return sum(norm(loc - pt) for pt in eachrow(points))
+        end
+    end
     return dist
 end
 
-function total_distance(points)
-    return sum(sum_distance(points)(pt) for pt in eachrow(points)) / 2
+function total_distance(points; squared=false)
+    return sum(sum_distance(points; squared=squared)(pt) for pt in eachrow(points)) / 2
 end
 
 function offsets(cuts::Vector{Matrix{T}} where {T}, lb=0)
@@ -27,17 +33,20 @@ function offsets(cuts::Vector{Matrix{T}} where {T}, lb=0)
     return (lb .- fy) ./ p
 end
 
-function sum_threshold(points::Matrix{T} where {T}, offset=0)
-    sd = sum_distance(points)
+function sum_threshold(points::Matrix{T} where {T}, offset=0; squared=false)
+    sd = sum_distance(points; squared=squared)
     thresholds = [sd(pt) + offset for pt in eachrow(points)]
     return loc -> sum(sd(loc) .< thresholds)
 end
 
-function sum_threshold(cuts::Vector{Matrix{T}} where {T}; use_lb=true, lb=0)
+function sum_threshold(cuts::Vector{Matrix{T}} where {T}; use_lb=true, lb=0, squared=false)
     if use_lb || lb > 0
-        st = (sum_threshold(cut, offset) for (cut, offset) in zip(cuts, offsets(cuts, lb)))
+        st = (
+            sum_threshold(cut, offset; squared=squared) for
+            (cut, offset) in zip(cuts, offsets(cuts, lb))
+        )
     else
-        st = (sum_threshold(cut) for cut in cuts)
+        st = (sum_threshold(cut; squared=squared) for cut in cuts)
     end
     max_thresholds(loc) = maximum(s(loc) for s in st)
     return max_thresholds
@@ -45,24 +54,22 @@ end
 
 plot_threshold!(cut::Matrix{T} where {T}; kwargs...) = plot_threshold!([cut]; kwargs...)
 function plot_threshold!(
-    cuts::Vector{Matrix{T}} where {T}; use_lb=false, lb=0, rng=range(0, 1, 500)
+    cuts::Vector{Matrix{T}} where {T};
+    use_lb=false,
+    lb=0,
+    steps=300,
+    squared=false,
+    other_locs=nothing,
 )
-    st = sum_threshold(cuts; use_lb=use_lb, lb=lb)
-    x = y = rng
+    st = sum_threshold(cuts; use_lb=use_lb, lb=lb, squared=squared)
+    # TODO: neaten this please
+    other_locs = isnothing(other_locs) ? vcat(cuts...) : vcat(other_locs, cuts...)
+    x = range(minimum(other_locs[:, 1]), maximum(other_locs[:, 1]), steps)
+    y = range(minimum(other_locs[:, 2]), maximum(other_locs[:, 2]), steps)
     z = ((x, y) -> st([x, y])).(x', y)
 
     CM = cgrad(:thermal; rev=true)
-    heatmap!(
-        x,
-        y,
-        z;
-        xlims=(0, 1),
-        ylims=(0, 1),
-        aspect_ratio=:equal,
-        alpha=0.6,
-        colormap=CM,
-        colorbar=false,
-    )
+    heatmap!(x, y, z; aspect_ratio=:equal, alpha=0.6, colormap=CM, colorbar=false)
     for cut in cuts
         contri = invperm(sortperm([sum_distance(cut)(pt) for pt in eachrow(cut)]; rev=true))
         scatter!(

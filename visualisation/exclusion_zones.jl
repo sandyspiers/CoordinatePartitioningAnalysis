@@ -2,13 +2,22 @@ using LinearAlgebra: norm
 using CoordinatePartitioning: build_edm
 
 using Plots
-# pythonplot()
 
 rand_loc(n::Integer, coords::Integer=2) = rand(n, coords)
 function rand_cir(n::Integer, coords::Integer=2)
     l = randn(n, coords)
     n = repeat(norm.(eachrow(l)); inner=(1, coords))
     return (l ./ n) ./ 2 .+ 0.5
+end
+
+function increased_range(collection, steps, increase)
+    return increased_range(minimum(collection), maximum(collection), steps, increase)
+end
+function increased_range(min, max, steps, increase)
+    rng = max - min
+    min -= rng * increase
+    max += rng * increase
+    return range(min, max, steps)
 end
 
 function sum_distance(points; squared=false)
@@ -62,10 +71,9 @@ function plot_threshold!(
     other_locs=nothing,
 )
     st = sum_threshold(cuts; use_lb=use_lb, lb=lb, squared=squared)
-    # TODO: neaten this please
-    other_locs = isnothing(other_locs) ? vcat(cuts...) : vcat(other_locs, cuts...)
-    x = range(minimum(other_locs[:, 1]), maximum(other_locs[:, 1]), steps)
-    y = range(minimum(other_locs[:, 2]), maximum(other_locs[:, 2]), steps)
+
+    locs = isnothing(other_locs) ? vcat(cuts...) : vcat(other_locs, cuts...)
+    x, y = (increased_range(locs[:, c], steps, 0.2) for c in 1:2)
     z = ((x, y) -> st([x, y])).(x', y)
 
     CM = cgrad(:thermal; rev=true)
@@ -84,73 +92,51 @@ function plot_threshold!(
             legend=false,
         )
     end
+    return scatter!()
 end
 
-function plot_single_cut(p)
-    cut = rand_cir(p)
-    p = plot(; size=(1000, 1000))
-    plot_threshold!(cut; use_lb=false)
-    return p
+plot_cut(cut; kwargs...) = plot_cuts(cut; kwargs...)
+function plot_cuts(cuts; kwargs...)
+    plot(; aspect_ratio=:equal)
+    return plot_threshold!(cuts; kwargs...)
 end
 
-function plot_multi_cut(p, m)
-    cuts = [rand_loc(p) for _ in 1:m]
-    p = plot(; xlims=(0, 1), ylims=(0, 1))
-    plot_threshold!(cuts; use_lb=true)
-    return p
-end
-
-function plot_single_cuts_and_contribution(p, n, m)
-    locs = rand_loc(n)
-    cuts = [rand_loc(p) for _ in 1:m]
-
-    single_fy = Plots.Plot[]
-    for cut in cuts
-        plt = plot()
-        plot_threshold!(cut; use_lb=false)
-        push!(single_fy, plt)
-    end
-    single_fy = plot(single_fy...; layout=(1, m))
-
-    all_lb = plot(; xlims=(0, 1), ylims=(0, 1))
-    plot_threshold!(cuts; use_lb=true)
-    scatter!(locs[:, 1], locs[:, 2]; markersize=5, alpha=1, legend=false)
-
+function plot_cuts_and_combined(cuts; squared=false)
+    fy = plot(
+        plot_cut.(cuts; use_lb=false, squared=squared)...;
+        layout=(1, length(cuts)),
+        aspect_ratio=:equal,
+        link=:all,
+    )
+    all = plot(plot_cuts(cuts; use_lb=true, squared=squared); aspect_ratio=:equal)
     return plot(
-        single_fy, all_lb; size=(1000, 1250), layout=grid(2, 1; heights=[0.25, 0.75])
+        fy,
+        all;
+        layout=grid(2, 1; heights=[1, length(cuts)] ./ (1 + length(cuts))),
+        link=:all,
     )
 end
 
-function plot_single_cuts_expanded_and_contribution(p, n, m)
-    locs = rand_loc(n)
-    cuts = [rand_loc(p) for _ in 1:m]
-
-    single_fy = Plots.Plot[]
-    for cut in cuts
-        plt = plot()
-        plot_threshold!(cut; use_lb=false)
-        push!(single_fy, plt)
-    end
-    single_fy = plot(single_fy...; layout=(1, m))
-
-    single_lb = Plots.Plot[]
-    lb = maximum(total_distance(cut) for cut in cuts)
-    for cut in cuts
-        plt = plot()
-        plot_threshold!(cut; lb=lb)
-        push!(single_lb, plt)
-    end
-    single_lb = plot(single_lb...; layout=(1, m))
-
-    all_lb = plot(; xlims=(0, 1), ylims=(0, 1))
-    plot_threshold!(cuts; use_lb=true)
-    scatter!(locs[:, 1], locs[:, 2]; markersize=5, alpha=1, legend=false)
-
+function plot_cuts_expanded_and_combined(cuts; squared=false)
+    fy = plot(
+        plot_cut.(cuts; use_lb=false, squared=squared)...;
+        layout=(1, length(cuts)),
+        aspect_ratio=:equal,
+        link=:all,
+    )
+    LB = maximum(total_distance(cut; squared=squared) for cut in cuts)
+    lb = plot(
+        plot_cut.(cuts; lb=LB, squared=squared)...;
+        layout=(1, length(cuts)),
+        aspect_ratio=:equal,
+        link=:all,
+    )
+    all = plot(plot_cuts(cuts; use_lb=true, squared=squared); aspect_ratio=:equal)
     return plot(
-        single_fy,
-        single_lb,
-        all_lb;
-        size=(1000, 1500),
-        layout=grid(3, 1; heights=[0.25, 0.25, 0.5]),
+        fy,
+        lb,
+        all;
+        layout=grid(3, 1; heights=[0.5, 0.5, length(cuts)] ./ (1 + length(cuts))),
+        link=:all,
     )
 end

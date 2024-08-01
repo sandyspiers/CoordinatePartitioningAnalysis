@@ -40,12 +40,13 @@ function plot_partition(locations, cut=nothing)
     return s
 end
 
-function plot_partitions(locations, strategy="random", cut=nothing)
+function plot_partitions(locations, strategy="random", cut=nothing; kwargs...)
     edm = build_edm(locations)
     return plot(
         (plot_partition(loc, cut) for loc in R2_partitions(edm, strategy))...;
         link=:all,
         legend=false,
         ticks=false,
+        kwargs...,
     )
 end

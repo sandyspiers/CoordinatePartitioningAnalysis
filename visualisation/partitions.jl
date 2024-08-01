@@ -1,5 +1,6 @@
 using LinearAlgebra: norm
-using CoordinatePartitioning: build_edm, euclid_embed, partition, STRATEGIES_ALL
+using CoordinatePartitioning:
+    build_edm, build_edms, euclid_embed, re_embed, partition, STRATEGIES_ALL, isedm
 
 using Plots
 
@@ -7,11 +8,12 @@ include("exclusion_zones.jl")
 
 function force_2_cols(mat)
     if ndims(mat) != 2
-        @warn "Matrix has $(ndims(mat)) but should have 2!"
+        @warn "Matrix has $(ndims(mat)) dimension but should have 2!"
         return mat
     end
     cols = size(mat)[2]
     if cols > 2
+        @warn "Removing a column from a matrix!"
         return mat[:, 1:2]
     end
     if cols == 2

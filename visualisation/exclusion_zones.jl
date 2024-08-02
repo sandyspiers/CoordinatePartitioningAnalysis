@@ -1,14 +1,15 @@
 using LinearAlgebra: norm
-using CoordinatePartitioning: build_edm
+using CoordinatePartitioning:
+    rand_loc_cube,
+    rand_loc_ball,
+    build_edm,
+    build_edms,
+    euclid_embed,
+    partition,
+    STRATEGIES_ALL,
+    isedm
 
 using Plots
-
-rand_loc(n::Integer, coords::Integer=2) = rand(n, coords)
-function rand_cir(n::Integer, coords::Integer=2)
-    l = randn(n, coords)
-    n = repeat(norm.(eachrow(l)); inner=(1, coords))
-    return (l ./ n) ./ 2 .+ 0.5
-end
 
 function increased_range(collection, steps, increase)
     return increased_range(minimum(collection), maximum(collection), steps, increase)
@@ -95,48 +96,27 @@ function plot_threshold!(
     return scatter!()
 end
 
-plot_cut(cut; kwargs...) = plot_cuts(cut; kwargs...)
-function plot_cuts(cuts; kwargs...)
+function plot_cut(cut; kwargs...)
     plot(; aspect_ratio=:equal)
-    return plot_threshold!(cuts; kwargs...)
+    return plot_threshold!(cut; kwargs...)
 end
 
-function plot_cuts_and_combined(cuts; squared=false)
-    fy = plot(
-        plot_cut.(cuts; use_lb=false, squared=squared)...;
-        layout=(1, length(cuts)),
-        aspect_ratio=:equal,
-        link=:all,
-    )
-    all = plot(plot_cuts(cuts; use_lb=true, squared=squared); aspect_ratio=:equal)
-    return plot(
-        fy,
-        all;
-        layout=grid(2, 1; heights=[1, length(cuts)] ./ (1 + length(cuts))),
-        link=:all,
-    )
+plot_combined(cuts; kwargs...) = plot_cut(cuts; use_lb=true, kwargs...)
+
+function plot_cuts(cuts; kwargs...)
+    return plot(plot_cut.(cuts; kwargs...)...; layout=(1, length(cuts)), link=:all)
 end
 
-function plot_cuts_expanded_and_combined(cuts; squared=false)
-    fy = plot(
-        plot_cut.(cuts; use_lb=false, squared=squared)...;
-        layout=(1, length(cuts)),
-        aspect_ratio=:equal,
-        link=:all,
-    )
+function plot_expanded(cuts; squared=false, kwargs...)
     LB = maximum(total_distance(cut; squared=squared) for cut in cuts)
-    lb = plot(
-        plot_cut.(cuts; lb=LB, squared=squared)...;
-        layout=(1, length(cuts)),
-        aspect_ratio=:equal,
-        link=:all,
-    )
-    all = plot(plot_cuts(cuts; use_lb=true, squared=squared); aspect_ratio=:equal)
+    return plot_cuts(cuts; lb=LB, kwargs...)
+end
+
+function plot_cuts_expanded_combined(cuts; kwargs...)
     return plot(
-        fy,
-        lb,
-        all;
+        plot_cuts(cuts; kwargs...),
+        plot_expanded(cuts; kwargs...),
+        plot_combined(cuts; kwargs...);
         layout=grid(3, 1; heights=[0.5, 0.5, length(cuts)] ./ (1 + length(cuts))),
-        link=:all,
     )
 end

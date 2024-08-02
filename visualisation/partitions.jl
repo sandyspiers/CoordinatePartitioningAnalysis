@@ -1,6 +1,13 @@
 using LinearAlgebra: norm
 using CoordinatePartitioning:
-    build_edm, build_edms, euclid_embed, partition, STRATEGIES_ALL, isedm
+    rand_loc_cube,
+    rand_loc_ball,
+    build_edm,
+    build_edms,
+    euclid_embed,
+    partition,
+    STRATEGIES_ALL,
+    isedm
 
 using Plots
 

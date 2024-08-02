@@ -1,6 +1,6 @@
 using LinearAlgebra: norm
 using CoordinatePartitioning:
-    build_edm, build_edms, euclid_embed, re_embed, partition, STRATEGIES_ALL, isedm
+    build_edm, build_edms, euclid_embed, partition, STRATEGIES_ALL, isedm
 
 using Plots
 
@@ -51,4 +51,11 @@ function plot_partitions(locations, strategy="random", cut=nothing; kwargs...)
         ticks=false,
         kwargs...,
     )
+end
+
+function plot_orig_and_partitions(locations, strategy="random", cut=nothing; kwargs...)
+    orig = scatter(eachcol(force_2_cols(locations))...; legend=false, aspect_ratio=:equal)
+    plot_threshold!(locations[cut, :]; other_locs=locations)
+    par = plot_partitions(locations, strategy, cut)
+    return plot(orig, par; layout=(2, 1), kwargs...)
 end

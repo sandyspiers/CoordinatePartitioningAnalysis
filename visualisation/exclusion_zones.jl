@@ -140,7 +140,7 @@ end
 
 function plot_expanded(cuts; squared=false, kwargs...)
     LB = maximum(total_distance(cut; squared=squared) for cut in cuts)
-    return plot_cuts(cuts; lb=LB, kwargs...)
+    return plot_cuts(cuts; lb=LB, squared=squared, kwargs...)
 end
 
 function plot_cuts_expanded_combined(cuts; kwargs...)

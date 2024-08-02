@@ -98,20 +98,12 @@ function plot_threshold!(
     z = ((x, y) -> st([x, y])).(x', y)
 
     CM = cgrad(:thermal; rev=true)
-    heatmap!(x, y, z; aspect_ratio=:equal, alpha=0.6, colormap=CM, colorbar=false)
+    heatmap!(x, y, z; alpha=0.6, colormap=CM, colorbar=false)
     for cut in cuts
         contributions = [sum_distance(cut)(pt) for pt in eachrow(cut)]
         priorities = invperm(sortperm(contributions; rev=true))
         scatter!(
-            cut[:, 1],
-            cut[:, 2];
-            zcolor=priorities,
-            colormap=CM,
-            markersize=5,
-            alpha=1,
-            aspect_ratio=:equal,
-            colorbar=false,
-            legend=false,
+            cut[:, 1], cut[:, 2]; zcolor=contri, colormap=CM, colorbar=false, legend=false
         )
         if outer_circles
             center = geometric_median(cut)
@@ -128,7 +120,7 @@ function plot_threshold!(
 end
 
 function plot_cut(cut; kwargs...)
-    plot(; aspect_ratio=:equal)
+    plot(; ticks=false)
     return plot_threshold!(cut; kwargs...)
 end
 

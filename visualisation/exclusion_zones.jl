@@ -1,3 +1,5 @@
+import DirectionalStatistics: geometric_median
+
 using LinearAlgebra: norm
 using CoordinatePartitioning:
     rand_loc_cube,
@@ -11,9 +13,25 @@ using CoordinatePartitioning:
 
 using Plots
 
+function geometric_median(a::Matrix)
+    return geometric_median([r for r in eachrow(a)])
+end
+
+function plot_circle(center, radius; kwargs...)
+    plot()
+    return plot_circle!(center, radius; kwargs)
+end
+
+function plot_circle!(center, radius; kwargs...)
+    θ = range(0, 2 * π, 100)
+    ◯ = first(center) .+ radius * sin.(θ), last(center) .+ radius * cos.(θ)
+    return plot!(◯; kwargs...)
+end
+
 function increased_range(collection, steps, increase)
     return increased_range(minimum(collection), maximum(collection), steps, increase)
 end
+
 function increased_range(min, max, steps, increase)
     rng = max - min
     min -= rng * increase
@@ -67,9 +85,11 @@ function plot_threshold!(
     cuts::Vector{Matrix{T}} where {T};
     use_lb=false,
     lb=0,
-    steps=300,
+    steps=500,
     squared=false,
     other_locs=nothing,
+    outer_circles=false,
+    kwargs...,
 )
     st = sum_threshold(cuts; use_lb=use_lb, lb=lb, squared=squared)
 
@@ -80,11 +100,12 @@ function plot_threshold!(
     CM = cgrad(:thermal; rev=true)
     heatmap!(x, y, z; aspect_ratio=:equal, alpha=0.6, colormap=CM, colorbar=false)
     for cut in cuts
-        contri = invperm(sortperm([sum_distance(cut)(pt) for pt in eachrow(cut)]; rev=true))
+        contributions = [sum_distance(cut)(pt) for pt in eachrow(cut)]
+        priorities = invperm(sortperm(contributions; rev=true))
         scatter!(
             cut[:, 1],
             cut[:, 2];
-            zcolor=contri,
+            zcolor=priorities,
             colormap=CM,
             markersize=5,
             alpha=1,
@@ -92,8 +113,18 @@ function plot_threshold!(
             colorbar=false,
             legend=false,
         )
+        if outer_circles
+            center = geometric_median(cut)
+            scatter!([first(center)], [last(center)])
+            radii = [norm(pt .- center) for pt in eachrow(cut)]
+            priority_ratio = priorities ./ length(priorities)
+            colors = CM[round.(Int, length(CM) .* priority_ratio)]
+            for (r, c) in zip(radii, colors)
+                plot_circle!(center, r; color=c)
+            end
+        end
     end
-    return scatter!()
+    return plot!(; kwargs...)
 end
 
 function plot_cut(cut; kwargs...)

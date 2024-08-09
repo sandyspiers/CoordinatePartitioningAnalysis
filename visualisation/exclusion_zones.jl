@@ -13,19 +13,10 @@ using CoordinatePartitioning:
 
 using Plots
 
-function geometric_median(a::Matrix)
-    return geometric_median([r for r in eachrow(a)])
-end
-
-function plot_circle(center, radius; kwargs...)
-    plot()
-    return plot_circle!(center, radius; kwargs)
-end
-
-function plot_circle!(center, radius; kwargs...)
-    θ = range(0, 2 * π, 100)
-    ◯ = first(center) .+ radius * sin.(θ), last(center) .+ radius * cos.(θ)
-    return plot!(◯; kwargs...)
+function circle_locations(num::Integer)
+    θ = range(0, 2 * π, num + 1)[1:(end - 1)]
+    loc = hcat(sin.(θ), cos.(θ))
+    return loc
 end
 
 function increased_range(collection, steps, increase)
@@ -101,14 +92,20 @@ function plot_threshold!(
     heatmap!(x, y, z; alpha=0.6, colormap=CM, colorbar=false)
     for cut in cuts
         contributions = [sum_distance(cut)(pt) for pt in eachrow(cut)]
+        @info contributions
         priorities = invperm(sortperm(contributions; rev=true))
         scatter!(
-            cut[:, 1], cut[:, 2]; zcolor=contri, colormap=CM, colorbar=false, legend=false
+            cut[:, 1],
+            cut[:, 2];
+            zcolor=priorities,
+            colormap=CM,
+            colorbar=false,
+            legend=false,
         )
         if outer_circles
             center = geometric_median(cut)
             scatter!([first(center)], [last(center)])
-            radii = [norm(pt .- center) for pt in eachrow(cut)]
+            radii = [norm(pt - center) for pt in eachrow(cut)]
             priority_ratio = priorities ./ length(priorities)
             colors = CM[round.(Int, length(CM) .* priority_ratio)]
             for (r, c) in zip(radii, colors)
